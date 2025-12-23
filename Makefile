@@ -45,6 +45,7 @@ Core/Src/i2c.c \
 Core/Src/tim.c \
 Core/Src/usart.c \
 Core/Src/oled.c \
+Core/Src/ds18b20.c \
 Core/Src/stm32f1xx_it.c \
 Core/Src/stm32f1xx_hal_msp.c \
 Core/Src/stm32f1xx_hal_timebase_tim.c \
@@ -181,6 +182,7 @@ LDSCRIPT = STM32F103XX_FLASH.ld
 # libraries
 LIBS = -lc -lm -lnosys 
 LIBDIR = 
+# LDFLAGS = $(MCU) -specs=nano.specs -u _printf_float -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
 LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
 
 # default action: build all

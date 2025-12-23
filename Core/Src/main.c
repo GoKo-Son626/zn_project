@@ -81,7 +81,9 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk; // 开启调试组件
+  DWT->CYCCNT = 0;                                // 清零计数器
+  DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;            // 开启计数
   /* USER CODE END Init */
 
   /* Configure the system clock */
