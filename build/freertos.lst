@@ -1,0 +1,618 @@
+ARM GAS  /tmp/ccoaOy6N.s 			page 1
+
+
+   1              		.cpu cortex-m3
+   2              		.eabi_attribute 20, 1
+   3              		.eabi_attribute 21, 1
+   4              		.eabi_attribute 23, 3
+   5              		.eabi_attribute 24, 1
+   6              		.eabi_attribute 25, 1
+   7              		.eabi_attribute 26, 1
+   8              		.eabi_attribute 30, 1
+   9              		.eabi_attribute 34, 1
+  10              		.eabi_attribute 18, 4
+  11              		.file	"freertos.c"
+  12              		.text
+  13              	.Ltext0:
+  14              		.cfi_sections	.debug_frame
+  15              		.section	.rodata.StartDefaultTask.str1.4,"aMS",%progbits,1
+  16              		.align	2
+  17              	.LC0:
+  18 0000 53797374 		.ascii	"System start success!\015\000"
+  18      656D2073 
+  18      74617274 
+  18      20737563 
+  18      63657373 
+  19 0017 00       		.align	2
+  20              	.LC1:
+  21 0018 53797374 		.ascii	"System Alive! Tick: %lu\015\012\000"
+  21      656D2041 
+  21      6C697665 
+  21      21205469 
+  21      636B3A20 
+  22              		.section	.text.StartDefaultTask,"ax",%progbits
+  23              		.align	1
+  24              		.global	StartDefaultTask
+  25              		.arch armv7-m
+  26              		.syntax unified
+  27              		.thumb
+  28              		.thumb_func
+  29              		.fpu softvfp
+  31              	StartDefaultTask:
+  32              	.LVL0:
+  33              	.LFB74:
+  34              		.file 1 "Core/Src/freertos.c"
+   1:Core/Src/freertos.c **** /* USER CODE BEGIN Header */
+   2:Core/Src/freertos.c **** /**
+   3:Core/Src/freertos.c ****   ******************************************************************************
+   4:Core/Src/freertos.c ****   * File Name          : freertos.c
+   5:Core/Src/freertos.c ****   * Description        : Code for freertos applications
+   6:Core/Src/freertos.c ****   ******************************************************************************
+   7:Core/Src/freertos.c ****   * @attention
+   8:Core/Src/freertos.c ****   *
+   9:Core/Src/freertos.c ****   * Copyright (c) 2025 STMicroelectronics.
+  10:Core/Src/freertos.c ****   * All rights reserved.
+  11:Core/Src/freertos.c ****   *
+  12:Core/Src/freertos.c ****   * This software is licensed under terms that can be found in the LICENSE file
+  13:Core/Src/freertos.c ****   * in the root directory of this software component.
+  14:Core/Src/freertos.c ****   * If no LICENSE file comes with this software, it is provided AS-IS.
+  15:Core/Src/freertos.c ****   *
+  16:Core/Src/freertos.c ****   ******************************************************************************
+ARM GAS  /tmp/ccoaOy6N.s 			page 2
+
+
+  17:Core/Src/freertos.c ****   */
+  18:Core/Src/freertos.c **** /* USER CODE END Header */
+  19:Core/Src/freertos.c **** 
+  20:Core/Src/freertos.c **** /* Includes ------------------------------------------------------------------*/
+  21:Core/Src/freertos.c **** #include "FreeRTOS.h"
+  22:Core/Src/freertos.c **** #include "task.h"
+  23:Core/Src/freertos.c **** #include "main.h"
+  24:Core/Src/freertos.c **** #include "cmsis_os.h"
+  25:Core/Src/freertos.c **** 
+  26:Core/Src/freertos.c **** /* Private includes ----------------------------------------------------------*/
+  27:Core/Src/freertos.c **** /* USER CODE BEGIN Includes */
+  28:Core/Src/freertos.c **** #include <stdio.h>
+  29:Core/Src/freertos.c **** #include "oled.h"
+  30:Core/Src/freertos.c **** /* USER CODE END Includes */
+  31:Core/Src/freertos.c **** 
+  32:Core/Src/freertos.c **** /* Private typedef -----------------------------------------------------------*/
+  33:Core/Src/freertos.c **** /* USER CODE BEGIN PTD */
+  34:Core/Src/freertos.c **** 
+  35:Core/Src/freertos.c **** /* USER CODE END PTD */
+  36:Core/Src/freertos.c **** 
+  37:Core/Src/freertos.c **** /* Private define ------------------------------------------------------------*/
+  38:Core/Src/freertos.c **** /* USER CODE BEGIN PD */
+  39:Core/Src/freertos.c **** 
+  40:Core/Src/freertos.c **** /* USER CODE END PD */
+  41:Core/Src/freertos.c **** 
+  42:Core/Src/freertos.c **** /* Private macro -------------------------------------------------------------*/
+  43:Core/Src/freertos.c **** /* USER CODE BEGIN PM */
+  44:Core/Src/freertos.c **** 
+  45:Core/Src/freertos.c **** /* USER CODE END PM */
+  46:Core/Src/freertos.c **** 
+  47:Core/Src/freertos.c **** /* Private variables ---------------------------------------------------------*/
+  48:Core/Src/freertos.c **** /* USER CODE BEGIN Variables */
+  49:Core/Src/freertos.c **** 
+  50:Core/Src/freertos.c **** /* USER CODE END Variables */
+  51:Core/Src/freertos.c **** /* Definitions for defaultTask */
+  52:Core/Src/freertos.c **** osThreadId_t defaultTaskHandle;
+  53:Core/Src/freertos.c **** const osThreadAttr_t defaultTask_attributes = {
+  54:Core/Src/freertos.c ****   .name = "defaultTask",
+  55:Core/Src/freertos.c ****   .stack_size = 128 * 4,
+  56:Core/Src/freertos.c ****   .priority = (osPriority_t) osPriorityNormal,
+  57:Core/Src/freertos.c **** };
+  58:Core/Src/freertos.c **** 
+  59:Core/Src/freertos.c **** /* Private function prototypes -----------------------------------------------*/
+  60:Core/Src/freertos.c **** /* USER CODE BEGIN FunctionPrototypes */
+  61:Core/Src/freertos.c **** osThreadId_t oledTaskHandle;
+  62:Core/Src/freertos.c **** void StartGUITask(void *argument);
+  63:Core/Src/freertos.c **** /* USER CODE END FunctionPrototypes */
+  64:Core/Src/freertos.c **** 
+  65:Core/Src/freertos.c **** void StartDefaultTask(void *argument);
+  66:Core/Src/freertos.c **** 
+  67:Core/Src/freertos.c **** void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+  68:Core/Src/freertos.c **** 
+  69:Core/Src/freertos.c **** /* Hook prototypes */
+  70:Core/Src/freertos.c **** void vApplicationMallocFailedHook(void);
+  71:Core/Src/freertos.c **** 
+  72:Core/Src/freertos.c **** /* USER CODE BEGIN 5 */
+  73:Core/Src/freertos.c **** void vApplicationMallocFailedHook(void)
+ARM GAS  /tmp/ccoaOy6N.s 			page 3
+
+
+  74:Core/Src/freertos.c **** {
+  75:Core/Src/freertos.c ****    /* vApplicationMallocFailedHook() will only be called if
+  76:Core/Src/freertos.c ****    configUSE_MALLOC_FAILED_HOOK is set to 1 in FreeRTOSConfig.h. It is a hook
+  77:Core/Src/freertos.c ****    function that will get called if a call to pvPortMalloc() fails.
+  78:Core/Src/freertos.c ****    pvPortMalloc() is called internally by the kernel whenever a task, queue,
+  79:Core/Src/freertos.c ****    timer or semaphore is created. It is also called by various parts of the
+  80:Core/Src/freertos.c ****    demo application. If heap_1.c or heap_2.c are used, then the size of the
+  81:Core/Src/freertos.c ****    heap available to pvPortMalloc() is defined by configTOTAL_HEAP_SIZE in
+  82:Core/Src/freertos.c ****    FreeRTOSConfig.h, and the xPortGetFreeHeapSize() API function can be used
+  83:Core/Src/freertos.c ****    to query the size of free heap space that remains (although it does not
+  84:Core/Src/freertos.c ****    provide information on how the remaining heap might be fragmented). */
+  85:Core/Src/freertos.c **** }
+  86:Core/Src/freertos.c **** /* USER CODE END 5 */
+  87:Core/Src/freertos.c **** 
+  88:Core/Src/freertos.c **** /**
+  89:Core/Src/freertos.c ****   * @brief  FreeRTOS initialization
+  90:Core/Src/freertos.c ****   * @param  None
+  91:Core/Src/freertos.c ****   * @retval None
+  92:Core/Src/freertos.c ****   */
+  93:Core/Src/freertos.c **** void MX_FREERTOS_Init(void) {
+  94:Core/Src/freertos.c ****   /* USER CODE BEGIN Init */
+  95:Core/Src/freertos.c **** 
+  96:Core/Src/freertos.c ****   /* USER CODE END Init */
+  97:Core/Src/freertos.c **** 
+  98:Core/Src/freertos.c ****   /* USER CODE BEGIN RTOS_MUTEX */
+  99:Core/Src/freertos.c ****   /* add mutexes, ... */
+ 100:Core/Src/freertos.c ****   /* USER CODE END RTOS_MUTEX */
+ 101:Core/Src/freertos.c **** 
+ 102:Core/Src/freertos.c ****   /* USER CODE BEGIN RTOS_SEMAPHORES */
+ 103:Core/Src/freertos.c ****   /* add semaphores, ... */
+ 104:Core/Src/freertos.c ****   /* USER CODE END RTOS_SEMAPHORES */
+ 105:Core/Src/freertos.c **** 
+ 106:Core/Src/freertos.c ****   /* USER CODE BEGIN RTOS_TIMERS */
+ 107:Core/Src/freertos.c ****   /* start timers, add new ones, ... */
+ 108:Core/Src/freertos.c ****   /* USER CODE END RTOS_TIMERS */
+ 109:Core/Src/freertos.c **** 
+ 110:Core/Src/freertos.c ****   /* USER CODE BEGIN RTOS_QUEUES */
+ 111:Core/Src/freertos.c ****   /* add queues, ... */
+ 112:Core/Src/freertos.c ****   /* USER CODE END RTOS_QUEUES */
+ 113:Core/Src/freertos.c **** 
+ 114:Core/Src/freertos.c ****   /* Create the thread(s) */
+ 115:Core/Src/freertos.c ****   /* creation of defaultTask */
+ 116:Core/Src/freertos.c ****   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+ 117:Core/Src/freertos.c ****   oledTaskHandle = osThreadNew(StartGUITask, NULL, &defaultTask_attributes);
+ 118:Core/Src/freertos.c **** 
+ 119:Core/Src/freertos.c ****   /* USER CODE BEGIN RTOS_THREADS */
+ 120:Core/Src/freertos.c ****   /* add threads, ... */
+ 121:Core/Src/freertos.c ****   /* USER CODE END RTOS_THREADS */
+ 122:Core/Src/freertos.c **** 
+ 123:Core/Src/freertos.c ****   /* USER CODE BEGIN RTOS_EVENTS */
+ 124:Core/Src/freertos.c ****   /* add events, ... */
+ 125:Core/Src/freertos.c ****   /* USER CODE END RTOS_EVENTS */
+ 126:Core/Src/freertos.c **** 
+ 127:Core/Src/freertos.c **** }
+ 128:Core/Src/freertos.c **** 
+ 129:Core/Src/freertos.c **** /* USER CODE BEGIN Header_StartDefaultTask */
+ 130:Core/Src/freertos.c **** /**
+ARM GAS  /tmp/ccoaOy6N.s 			page 4
+
+
+ 131:Core/Src/freertos.c ****   * @brief  Function implementing the defaultTask thread.
+ 132:Core/Src/freertos.c ****   * @param  argument: Not used
+ 133:Core/Src/freertos.c ****   * @retval None
+ 134:Core/Src/freertos.c ****   */
+ 135:Core/Src/freertos.c **** /* USER CODE END Header_StartDefaultTask */
+ 136:Core/Src/freertos.c **** void StartDefaultTask(void *argument)
+ 137:Core/Src/freertos.c **** {
+  35              		.loc 1 137 1 view -0
+  36              		.cfi_startproc
+  37              		@ Volatile: function does not return.
+  38              		@ args = 0, pretend = 0, frame = 0
+  39              		@ frame_needed = 0, uses_anonymous_args = 0
+  40              		.loc 1 137 1 is_stmt 0 view .LVU1
+  41 0000 08B5     		push	{r3, lr}
+  42              	.LCFI0:
+  43              		.cfi_def_cfa_offset 8
+  44              		.cfi_offset 3, -8
+  45              		.cfi_offset 14, -4
+ 138:Core/Src/freertos.c ****   /* USER CODE BEGIN StartDefaultTask */
+ 139:Core/Src/freertos.c ****   printf("System start success!\r\n");
+  46              		.loc 1 139 3 is_stmt 1 view .LVU2
+  47 0002 0948     		ldr	r0, .L4
+  48              	.LVL1:
+  49              		.loc 1 139 3 is_stmt 0 view .LVU3
+  50 0004 FFF7FEFF 		bl	puts
+  51              	.LVL2:
+  52              	.L2:
+ 140:Core/Src/freertos.c ****   /* Infinite loop */
+ 141:Core/Src/freertos.c ****   for(;;)
+  53              		.loc 1 141 3 is_stmt 1 discriminator 1 view .LVU4
+ 142:Core/Src/freertos.c ****   {
+ 143:Core/Src/freertos.c ****     // osDelay(1);
+ 144:Core/Src/freertos.c ****     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
+  54              		.loc 1 144 5 discriminator 1 view .LVU5
+  55 0008 2021     		movs	r1, #32
+  56 000a 0848     		ldr	r0, .L4+4
+  57 000c FFF7FEFF 		bl	HAL_GPIO_TogglePin
+  58              	.LVL3:
+ 145:Core/Src/freertos.c ****     osDelay(1000);
+  59              		.loc 1 145 5 discriminator 1 view .LVU6
+  60 0010 4FF47A70 		mov	r0, #1000
+  61 0014 FFF7FEFF 		bl	osDelay
+  62              	.LVL4:
+ 146:Core/Src/freertos.c ****     printf("System Alive! Tick: %lu\r\n", HAL_GetTick());
+  63              		.loc 1 146 5 discriminator 1 view .LVU7
+  64 0018 FFF7FEFF 		bl	HAL_GetTick
+  65              	.LVL5:
+  66 001c 0146     		mov	r1, r0
+  67 001e 0448     		ldr	r0, .L4+8
+  68 0020 FFF7FEFF 		bl	printf
+  69              	.LVL6:
+ 141:Core/Src/freertos.c ****   {
+  70              		.loc 1 141 8 discriminator 1 view .LVU8
+  71 0024 F0E7     		b	.L2
+  72              	.L5:
+  73 0026 00BF     		.align	2
+  74              	.L4:
+ARM GAS  /tmp/ccoaOy6N.s 			page 5
+
+
+  75 0028 00000000 		.word	.LC0
+  76 002c 000C0140 		.word	1073810432
+  77 0030 18000000 		.word	.LC1
+  78              		.cfi_endproc
+  79              	.LFE74:
+  81              		.section	.rodata.StartGUITask.str1.4,"aMS",%progbits,1
+  82              		.align	2
+  83              	.LC2:
+  84 0000 57617465 		.ascii	"Water Monitor\000"
+  84      72204D6F 
+  84      6E69746F 
+  84      7200
+  85 000e 0000     		.align	2
+  86              	.LC3:
+  87 0010 54656D70 		.ascii	"Temp: --.-- C\000"
+  87      3A202D2D 
+  87      2E2D2D20 
+  87      4300
+  88 001e 0000     		.align	2
+  89              	.LC4:
+  90 0020 4E545520 		.ascii	"NTU : ----\000"
+  90      3A202D2D 
+  90      2D2D00
+  91 002b 00       		.align	2
+  92              	.LC5:
+  93 002c 53797374 		.ascii	"System: Run\000"
+  93      656D3A20 
+  93      52756E00 
+  94              		.align	2
+  95              	.LC6:
+  96 0038 2E00     		.ascii	".\000"
+  97 003a 0000     		.align	2
+  98              	.LC7:
+  99 003c 2000     		.ascii	" \000"
+ 100              		.section	.text.StartGUITask,"ax",%progbits
+ 101              		.align	1
+ 102              		.global	StartGUITask
+ 103              		.syntax unified
+ 104              		.thumb
+ 105              		.thumb_func
+ 106              		.fpu softvfp
+ 108              	StartGUITask:
+ 109              	.LVL7:
+ 110              	.LFB75:
+ 147:Core/Src/freertos.c **** 
+ 148:Core/Src/freertos.c ****   }
+ 149:Core/Src/freertos.c ****   /* USER CODE END StartDefaultTask */
+ 150:Core/Src/freertos.c **** }
+ 151:Core/Src/freertos.c **** 
+ 152:Core/Src/freertos.c **** /* Private application code --------------------------------------------------*/
+ 153:Core/Src/freertos.c **** /* USER CODE BEGIN Application */
+ 154:Core/Src/freertos.c **** void StartGUITask(void *argument)
+ 155:Core/Src/freertos.c **** {
+ 111              		.loc 1 155 1 view -0
+ 112              		.cfi_startproc
+ 113              		@ Volatile: function does not return.
+ 114              		@ args = 0, pretend = 0, frame = 0
+ARM GAS  /tmp/ccoaOy6N.s 			page 6
+
+
+ 115              		@ frame_needed = 0, uses_anonymous_args = 0
+ 116              		.loc 1 155 1 is_stmt 0 view .LVU10
+ 117 0000 08B5     		push	{r3, lr}
+ 118              	.LCFI1:
+ 119              		.cfi_def_cfa_offset 8
+ 120              		.cfi_offset 3, -8
+ 121              		.cfi_offset 14, -4
+ 156:Core/Src/freertos.c ****   // 1. 初始化 OLED (必须在任务里做，不能在中断里做)
+ 157:Core/Src/freertos.c ****   OLED_Init();
+ 122              		.loc 1 157 3 is_stmt 1 view .LVU11
+ 123 0002 FFF7FEFF 		bl	OLED_Init
+ 124              	.LVL8:
+ 158:Core/Src/freertos.c ****   OLED_Clear();
+ 125              		.loc 1 158 3 view .LVU12
+ 126 0006 FFF7FEFF 		bl	OLED_Clear
+ 127              	.LVL9:
+ 159:Core/Src/freertos.c ****   
+ 160:Core/Src/freertos.c ****   // 2. 显示固定 UI 框架
+ 161:Core/Src/freertos.c ****   OLED_ShowString(0, 0, (u8*)"Water Monitor", 16);
+ 128              		.loc 1 161 3 view .LVU13
+ 129 000a 1023     		movs	r3, #16
+ 130 000c 1B4A     		ldr	r2, .L12
+ 131 000e 0021     		movs	r1, #0
+ 132 0010 0846     		mov	r0, r1
+ 133 0012 FFF7FEFF 		bl	OLED_ShowString
+ 134              	.LVL10:
+ 162:Core/Src/freertos.c ****   OLED_ShowString(0, 16, (u8*)"Temp: --.-- C", 12);
+ 135              		.loc 1 162 3 view .LVU14
+ 136 0016 0C23     		movs	r3, #12
+ 137 0018 194A     		ldr	r2, .L12+4
+ 138 001a 1021     		movs	r1, #16
+ 139 001c 0020     		movs	r0, #0
+ 140 001e FFF7FEFF 		bl	OLED_ShowString
+ 141              	.LVL11:
+ 163:Core/Src/freertos.c ****   OLED_ShowString(0, 28, (u8*)"NTU : ----", 12);
+ 142              		.loc 1 163 3 view .LVU15
+ 143 0022 0C23     		movs	r3, #12
+ 144 0024 174A     		ldr	r2, .L12+8
+ 145 0026 1C21     		movs	r1, #28
+ 146 0028 0020     		movs	r0, #0
+ 147 002a FFF7FEFF 		bl	OLED_ShowString
+ 148              	.LVL12:
+ 164:Core/Src/freertos.c ****   OLED_ShowString(0, 40, (u8*)"System: Run", 12);
+ 149              		.loc 1 164 3 view .LVU16
+ 150 002e 0C23     		movs	r3, #12
+ 151 0030 154A     		ldr	r2, .L12+12
+ 152 0032 2821     		movs	r1, #40
+ 153 0034 0020     		movs	r0, #0
+ 154 0036 FFF7FEFF 		bl	OLED_ShowString
+ 155              	.LVL13:
+ 165:Core/Src/freertos.c **** 
+ 166:Core/Src/freertos.c ****   
+ 167:Core/Src/freertos.c ****   OLED_Refresh();
+ 156              		.loc 1 167 3 view .LVU17
+ 157 003a FFF7FEFF 		bl	OLED_Refresh
+ 158              	.LVL14:
+ 159 003e 11E0     		b	.L9
+ARM GAS  /tmp/ccoaOy6N.s 			page 7
+
+
+ 160              	.L11:
+ 161              	.LBB2:
+ 168:Core/Src/freertos.c **** 
+ 169:Core/Src/freertos.c ****   /* Infinite loop */
+ 170:Core/Src/freertos.c ****   for(;;)
+ 171:Core/Src/freertos.c ****   {
+ 172:Core/Src/freertos.c ****     // 3. 在这里更新动态数据 (后面我们会用队列把数据传进来)
+ 173:Core/Src/freertos.c ****     // 示例：显示个动态心跳点
+ 174:Core/Src/freertos.c ****     static uint8_t heart = 0;
+ 175:Core/Src/freertos.c ****     if(heart) OLED_ShowString(110, 0, (u8*)".", 16);
+ 162              		.loc 1 175 15 discriminator 1 view .LVU18
+ 163 0040 1023     		movs	r3, #16
+ 164 0042 124A     		ldr	r2, .L12+16
+ 165 0044 0021     		movs	r1, #0
+ 166 0046 6E20     		movs	r0, #110
+ 167 0048 FFF7FEFF 		bl	OLED_ShowString
+ 168              	.LVL15:
+ 169              	.L8:
+ 176:Core/Src/freertos.c ****     else      OLED_ShowString(110, 0, (u8*)" ", 16);
+ 177:Core/Src/freertos.c ****     heart = !heart;
+ 170              		.loc 1 177 5 view .LVU19
+ 171              		.loc 1 177 13 is_stmt 0 view .LVU20
+ 172 004c 104A     		ldr	r2, .L12+20
+ 173 004e 1378     		ldrb	r3, [r2]	@ zero_extendqisi2
+ 174 0050 B3FA83F3 		clz	r3, r3
+ 175 0054 5B09     		lsrs	r3, r3, #5
+ 176              		.loc 1 177 11 view .LVU21
+ 177 0056 1370     		strb	r3, [r2]
+ 178:Core/Src/freertos.c ****     
+ 179:Core/Src/freertos.c ****     // 4. 刷新屏幕
+ 180:Core/Src/freertos.c ****     OLED_Refresh();
+ 178              		.loc 1 180 5 is_stmt 1 view .LVU22
+ 179 0058 FFF7FEFF 		bl	OLED_Refresh
+ 180              	.LVL16:
+ 181:Core/Src/freertos.c ****     
+ 182:Core/Src/freertos.c ****     // 5. 延时 (刷屏不要太快，500ms 一次足够)
+ 183:Core/Src/freertos.c ****     osDelay(500); 
+ 181              		.loc 1 183 5 view .LVU23
+ 182 005c 4FF4FA70 		mov	r0, #500
+ 183 0060 FFF7FEFF 		bl	osDelay
+ 184              	.LVL17:
+ 185              	.LBE2:
+ 170:Core/Src/freertos.c ****   {
+ 186              		.loc 1 170 8 view .LVU24
+ 187              	.L9:
+ 170:Core/Src/freertos.c ****   {
+ 188              		.loc 1 170 3 view .LVU25
+ 189              	.LBB3:
+ 174:Core/Src/freertos.c ****     if(heart) OLED_ShowString(110, 0, (u8*)".", 16);
+ 190              		.loc 1 174 5 view .LVU26
+ 175:Core/Src/freertos.c ****     else      OLED_ShowString(110, 0, (u8*)" ", 16);
+ 191              		.loc 1 175 5 view .LVU27
+ 175:Core/Src/freertos.c ****     else      OLED_ShowString(110, 0, (u8*)" ", 16);
+ 192              		.loc 1 175 8 is_stmt 0 view .LVU28
+ 193 0064 0A4B     		ldr	r3, .L12+20
+ 194 0066 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 175:Core/Src/freertos.c ****     else      OLED_ShowString(110, 0, (u8*)" ", 16);
+ARM GAS  /tmp/ccoaOy6N.s 			page 8
+
+
+ 195              		.loc 1 175 7 view .LVU29
+ 196 0068 002B     		cmp	r3, #0
+ 197 006a E9D1     		bne	.L11
+ 176:Core/Src/freertos.c ****     heart = !heart;
+ 198              		.loc 1 176 15 is_stmt 1 view .LVU30
+ 199 006c 1023     		movs	r3, #16
+ 200 006e 094A     		ldr	r2, .L12+24
+ 201 0070 0021     		movs	r1, #0
+ 202 0072 6E20     		movs	r0, #110
+ 203 0074 FFF7FEFF 		bl	OLED_ShowString
+ 204              	.LVL18:
+ 205 0078 E8E7     		b	.L8
+ 206              	.L13:
+ 207 007a 00BF     		.align	2
+ 208              	.L12:
+ 209 007c 00000000 		.word	.LC2
+ 210 0080 10000000 		.word	.LC3
+ 211 0084 20000000 		.word	.LC4
+ 212 0088 2C000000 		.word	.LC5
+ 213 008c 38000000 		.word	.LC6
+ 214 0090 00000000 		.word	.LANCHOR0
+ 215 0094 3C000000 		.word	.LC7
+ 216              	.LBE3:
+ 217              		.cfi_endproc
+ 218              	.LFE75:
+ 220              		.section	.text.vApplicationMallocFailedHook,"ax",%progbits
+ 221              		.align	1
+ 222              		.global	vApplicationMallocFailedHook
+ 223              		.syntax unified
+ 224              		.thumb
+ 225              		.thumb_func
+ 226              		.fpu softvfp
+ 228              	vApplicationMallocFailedHook:
+ 229              	.LFB72:
+  74:Core/Src/freertos.c ****    /* vApplicationMallocFailedHook() will only be called if
+ 230              		.loc 1 74 1 view -0
+ 231              		.cfi_startproc
+ 232              		@ args = 0, pretend = 0, frame = 0
+ 233              		@ frame_needed = 0, uses_anonymous_args = 0
+ 234              		@ link register save eliminated.
+  85:Core/Src/freertos.c **** /* USER CODE END 5 */
+ 235              		.loc 1 85 1 view .LVU32
+ 236 0000 7047     		bx	lr
+ 237              		.cfi_endproc
+ 238              	.LFE72:
+ 240              		.section	.text.MX_FREERTOS_Init,"ax",%progbits
+ 241              		.align	1
+ 242              		.global	MX_FREERTOS_Init
+ 243              		.syntax unified
+ 244              		.thumb
+ 245              		.thumb_func
+ 246              		.fpu softvfp
+ 248              	MX_FREERTOS_Init:
+ 249              	.LFB73:
+  93:Core/Src/freertos.c ****   /* USER CODE BEGIN Init */
+ 250              		.loc 1 93 29 view -0
+ 251              		.cfi_startproc
+ARM GAS  /tmp/ccoaOy6N.s 			page 9
+
+
+ 252              		@ args = 0, pretend = 0, frame = 0
+ 253              		@ frame_needed = 0, uses_anonymous_args = 0
+ 254 0000 10B5     		push	{r4, lr}
+ 255              	.LCFI2:
+ 256              		.cfi_def_cfa_offset 8
+ 257              		.cfi_offset 4, -8
+ 258              		.cfi_offset 14, -4
+ 116:Core/Src/freertos.c ****   oledTaskHandle = osThreadNew(StartGUITask, NULL, &defaultTask_attributes);
+ 259              		.loc 1 116 3 view .LVU34
+ 116:Core/Src/freertos.c ****   oledTaskHandle = osThreadNew(StartGUITask, NULL, &defaultTask_attributes);
+ 260              		.loc 1 116 23 is_stmt 0 view .LVU35
+ 261 0002 084C     		ldr	r4, .L17
+ 262 0004 2246     		mov	r2, r4
+ 263 0006 0021     		movs	r1, #0
+ 264 0008 0748     		ldr	r0, .L17+4
+ 265 000a FFF7FEFF 		bl	osThreadNew
+ 266              	.LVL19:
+ 116:Core/Src/freertos.c ****   oledTaskHandle = osThreadNew(StartGUITask, NULL, &defaultTask_attributes);
+ 267              		.loc 1 116 21 view .LVU36
+ 268 000e 074B     		ldr	r3, .L17+8
+ 269 0010 1860     		str	r0, [r3]
+ 117:Core/Src/freertos.c **** 
+ 270              		.loc 1 117 3 is_stmt 1 view .LVU37
+ 117:Core/Src/freertos.c **** 
+ 271              		.loc 1 117 20 is_stmt 0 view .LVU38
+ 272 0012 2246     		mov	r2, r4
+ 273 0014 0021     		movs	r1, #0
+ 274 0016 0648     		ldr	r0, .L17+12
+ 275 0018 FFF7FEFF 		bl	osThreadNew
+ 276              	.LVL20:
+ 117:Core/Src/freertos.c **** 
+ 277              		.loc 1 117 18 view .LVU39
+ 278 001c 054B     		ldr	r3, .L17+16
+ 279 001e 1860     		str	r0, [r3]
+ 127:Core/Src/freertos.c **** 
+ 280              		.loc 1 127 1 view .LVU40
+ 281 0020 10BD     		pop	{r4, pc}
+ 282              	.L18:
+ 283 0022 00BF     		.align	2
+ 284              	.L17:
+ 285 0024 00000000 		.word	.LANCHOR1
+ 286 0028 00000000 		.word	StartDefaultTask
+ 287 002c 00000000 		.word	.LANCHOR2
+ 288 0030 00000000 		.word	StartGUITask
+ 289 0034 00000000 		.word	.LANCHOR3
+ 290              		.cfi_endproc
+ 291              	.LFE73:
+ 293              		.global	oledTaskHandle
+ 294              		.global	defaultTask_attributes
+ 295              		.section	.rodata.str1.4,"aMS",%progbits,1
+ 296              		.align	2
+ 297              	.LC8:
+ 298 0000 64656661 		.ascii	"defaultTask\000"
+ 298      756C7454 
+ 298      61736B00 
+ 299              		.global	defaultTaskHandle
+ 300              		.section	.bss.defaultTaskHandle,"aw",%nobits
+ARM GAS  /tmp/ccoaOy6N.s 			page 10
+
+
+ 301              		.align	2
+ 302              		.set	.LANCHOR2,. + 0
+ 305              	defaultTaskHandle:
+ 306 0000 00000000 		.space	4
+ 307              		.section	.bss.heart.0,"aw",%nobits
+ 308              		.set	.LANCHOR0,. + 0
+ 311              	heart.0:
+ 312 0000 00       		.space	1
+ 313              		.section	.bss.oledTaskHandle,"aw",%nobits
+ 314              		.align	2
+ 315              		.set	.LANCHOR3,. + 0
+ 318              	oledTaskHandle:
+ 319 0000 00000000 		.space	4
+ 320              		.section	.rodata.defaultTask_attributes,"a"
+ 321              		.align	2
+ 322              		.set	.LANCHOR1,. + 0
+ 325              	defaultTask_attributes:
+ 326 0000 00000000 		.word	.LC8
+ 327 0004 00000000 		.space	16
+ 327      00000000 
+ 327      00000000 
+ 327      00000000 
+ 328 0014 00020000 		.word	512
+ 329 0018 18000000 		.word	24
+ 330 001c 00000000 		.space	8
+ 330      00000000 
+ 331              		.text
+ 332              	.Letext0:
+ 333              		.file 2 "/usr/lib/gcc/arm-none-eabi/10.3.1/include/stdint.h"
+ 334              		.file 3 "Drivers/CMSIS/Device/ST/STM32F1xx/Include/stm32f103xe.h"
+ 335              		.file 4 "Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h"
+ 336              		.file 5 "Core/Inc/oled.h"
+ 337              		.file 6 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_gpio.h"
+ 338              		.file 7 "Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h"
+ 339              		.file 8 "/usr/include/newlib/stdio.h"
+ 340              		.file 9 "<built-in>"
+ARM GAS  /tmp/ccoaOy6N.s 			page 11
+
+
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 freertos.c
+     /tmp/ccoaOy6N.s:16     .rodata.StartDefaultTask.str1.4:0000000000000000 $d
+     /tmp/ccoaOy6N.s:23     .text.StartDefaultTask:0000000000000000 $t
+     /tmp/ccoaOy6N.s:31     .text.StartDefaultTask:0000000000000000 StartDefaultTask
+     /tmp/ccoaOy6N.s:75     .text.StartDefaultTask:0000000000000028 $d
+     /tmp/ccoaOy6N.s:82     .rodata.StartGUITask.str1.4:0000000000000000 $d
+     /tmp/ccoaOy6N.s:101    .text.StartGUITask:0000000000000000 $t
+     /tmp/ccoaOy6N.s:108    .text.StartGUITask:0000000000000000 StartGUITask
+     /tmp/ccoaOy6N.s:209    .text.StartGUITask:000000000000007c $d
+     /tmp/ccoaOy6N.s:221    .text.vApplicationMallocFailedHook:0000000000000000 $t
+     /tmp/ccoaOy6N.s:228    .text.vApplicationMallocFailedHook:0000000000000000 vApplicationMallocFailedHook
+     /tmp/ccoaOy6N.s:241    .text.MX_FREERTOS_Init:0000000000000000 $t
+     /tmp/ccoaOy6N.s:248    .text.MX_FREERTOS_Init:0000000000000000 MX_FREERTOS_Init
+     /tmp/ccoaOy6N.s:285    .text.MX_FREERTOS_Init:0000000000000024 $d
+     /tmp/ccoaOy6N.s:318    .bss.oledTaskHandle:0000000000000000 oledTaskHandle
+     /tmp/ccoaOy6N.s:325    .rodata.defaultTask_attributes:0000000000000000 defaultTask_attributes
+     /tmp/ccoaOy6N.s:296    .rodata.str1.4:0000000000000000 $d
+     /tmp/ccoaOy6N.s:305    .bss.defaultTaskHandle:0000000000000000 defaultTaskHandle
+     /tmp/ccoaOy6N.s:301    .bss.defaultTaskHandle:0000000000000000 $d
+     /tmp/ccoaOy6N.s:311    .bss.heart.0:0000000000000000 heart.0
+     /tmp/ccoaOy6N.s:312    .bss.heart.0:0000000000000000 $d
+     /tmp/ccoaOy6N.s:314    .bss.oledTaskHandle:0000000000000000 $d
+     /tmp/ccoaOy6N.s:321    .rodata.defaultTask_attributes:0000000000000000 $d
+
+UNDEFINED SYMBOLS
+puts
+HAL_GPIO_TogglePin
+osDelay
+HAL_GetTick
+printf
+OLED_Init
+OLED_Clear
+OLED_ShowString
+OLED_Refresh
+osThreadNew
