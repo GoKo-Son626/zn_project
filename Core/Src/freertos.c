@@ -38,15 +38,19 @@
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
+/* USER CODE BEGIN Pv */
 // 1. 存放 ADC DMA 搬运来的原始数据 (对应 IN10, IN11, IN12)
 uint16_t adc_raw_data[3] = {0};
 
 // 2. 存放处理后的物理量 (给 GUI 显示用)
-float shared_temp = 0.0f;      // 水温
-float shared_ntu_volt = 0.0f;  // 浊度电压
-uint16_t shared_level = 0;     // 液位原始值
-/* USER CODE END PD */
+
+float shared_temp = 0.0f;      // 温度
+float shared_ntu_volt = 0.0f;  // 浊度电压 (保留着，调试用)
+float shared_ntu_val = 0.0f;   // 【新增】浊度百分比 (0-100)
+uint16_t shared_level = 0;     // 液位
+uint8_t shared_level_pct = 0;  // 水位百分比
+
+/* USER CODE END Pv */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
@@ -196,15 +200,33 @@ void StartGUITask(void *argument)
     // --- 刷新浊度电压 ---
     // sprintf(disp_buf, "%.2f V  ", shared_ntu_volt);
     // OLED_ShowString(40, 28, (u8*)disp_buf, 12);
-    int ntu_int = (int)shared_ntu_volt;
-    int ntu_dec = (int)((shared_ntu_volt - ntu_int) * 100); // 显示两位小数
+    int ntu_int = (int)shared_ntu_val;
+    int ntu_dec = (int)((shared_ntu_val- ntu_int) * 100); // 显示两位小数
     if(ntu_dec < 0) ntu_dec = -ntu_dec;
-    sprintf(disp_buf, "%d.%02d V  ", ntu_int, ntu_dec);
+    sprintf(disp_buf, "%d.%02d %%  ", ntu_int, ntu_dec);
     OLED_ShowString(40, 28, (u8*)disp_buf, 12);
 
     // --- 刷新液位值 ---
-    sprintf(disp_buf, "%d    ", shared_level);
+    // 第一步：把原始值 (0~4095) 换算成百分比 (0.0~100.0)
+    // 假设：你的传感器在满水时，Lvl_Raw 大概是 2500 (这个值你需要根据实测修改！)
+    // 公式：当前值 / 满水值 * 100
+    float level_val_float = (float)shared_level * 100.0f / 1100.0f;
+    
+    // 限制最大只能显示 100.00 %
+    if(level_val_float > 100.0f) level_val_float = 100.0f;
+
+    // 第二步：拆分整数和小数 (完全照搬你的格式逻辑)
+    int lvl_int = (int)level_val_float;
+    int lvl_dec = (int)((level_val_float - lvl_int) * 100); 
+    if(lvl_dec < 0) lvl_dec = -lvl_dec; // 防止负数bug
+
+    // 第三步：格式化并显示
+    // 这里的 " %% " 是为了在 sprintf 里打印出一个百分号
+    // x=40, y=40 是液位行的位置
+    sprintf(disp_buf, "%d %%   ", shared_level_pct); 
     OLED_ShowString(40, 40, (u8*)disp_buf, 12);
+
+
 
     // --- 心跳点 (可选) ---
     static uint8_t tick = 0;
@@ -225,8 +247,6 @@ void StartSensorTask(void *argument)
 // 1. 初始化 DS18B20
   // 虽然 main.c 里没调，但在这里调最安全
   uint8_t dev_status = DS18B20_Init();
-  if(dev_status == 0) printf("DS18B20 Found!\r\n");
-  else                printf("DS18B20 Not Found! Check Wiring.\r\n");
 
   // 2. 启动 ADC DMA (让硬件在后台自动读 IN10, IN11, IN12)
   // 注意：数组长度是 3
@@ -235,17 +255,34 @@ void StartSensorTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    if(dev_status == 0) printf("DS18B20 Found!\r\n");
-    else                printf("DS18B20 Not Found! Check Wiring.\r\n");
     // --- A. 读取 DS18B20 温度 ---
     shared_temp = DS18B20_Get_Temp();
 
     // --- B. 处理 浊度 (IN10 -> adc_raw_data[0]) ---
     // 浊度传感器输出的是电压，我们先显示电压，方便后续校准
-    shared_ntu_volt = adc_raw_data[0] * 3.3f / 4096.0f;
+    float voltage = adc_raw_data[0] * 3.3f / 4096.0f;
+    shared_ntu_volt = voltage;
+    // 逻辑：电压越高，水越干净(100)；电压越低，水越脏(0)
+    float temp_val = voltage * 100.0f / 3.3f * 2;
+    if(temp_val > 100.0f) temp_val = 100.0f; // 限制最大值
+    
+    // 如果你想要“数值越大越脏”，可以用 100 - temp_val
+    shared_ntu_val = 100 - temp_val;
 
     // --- C. 处理 液位 (IN11 -> adc_raw_data[1]) ---
     shared_level = adc_raw_data[1];
+    
+    if(shared_level >= 1000)      shared_level_pct = 100;
+    else if(shared_level >= 700) shared_level_pct = 90;
+    else if(shared_level >= 450) shared_level_pct = 80;
+    else if(shared_level >= 300) shared_level_pct = 70;
+    else if(shared_level >= 230) shared_level_pct = 60;
+    else if(shared_level >= 180) shared_level_pct = 50;
+    else if(shared_level >= 140)  shared_level_pct = 40;
+    else if(shared_level >= 125)  shared_level_pct = 30;
+    else if(shared_level >= 100)  shared_level_pct = 20;
+    else if(shared_level >= 80)  shared_level_pct = 10;
+    else                          shared_level_pct = 0;
 
     // --- D. 串口打印 (调试用) ---
     // 这样你既可以在屏幕看，也可以在电脑串口助手看
