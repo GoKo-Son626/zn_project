@@ -45,7 +45,7 @@ Core/Src/i2c.c \
 Core/Src/tim.c \
 Core/Src/usart.c \
 Core/Src/oled.c \
-Core/Src/ds18b20.c \
+Core/Src/dht11.c \
 Core/Src/stm32f1xx_it.c \
 Core/Src/stm32f1xx_hal_msp.c \
 Core/Src/stm32f1xx_hal_timebase_tim.c \
@@ -79,6 +79,8 @@ Middlewares/Third_Party/FreeRTOS/Source/portable/MemMang/heap_4.c \
 Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3/port.c \
 Core/Src/sysmem.c \
 Core/Src/syscalls.c
+
+# Core/Src/ds18b20.c \
 
 # ASM sources
 ASM_SOURCES =  \
