@@ -229,37 +229,31 @@ void StartDHT11Task(void *argument)
   }
 }
 
-/* USER CODE BEGIN Header_StartMotorTask */
-/**
-* @brief Function implementing the motorTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartMotorTask */
 void StartMotorTask(void *argument)
 {
   /* USER CODE BEGIN StartMotorTask */
-  // 1. 系统启动后先初始化马达
-  Motor_Init_All();
+  Motor_Init_All(); // 初始化马达
   
-  /* Infinite loop */
   for(;;)
   {
-    // 这里写你的逻辑。比如：如果温度 > 30度，风扇(马达)全速转动
-    
+    // 逻辑判定：假设温度阈值为 30 度
     if(temperature >= 30)
     {
-        Motor_Set(90, 1); // 90%转速正转
+        // 1. 马达以 80% 速度正转（作为散热风扇）
+        Motor_Set(20, 1);
+        // // 2. 蜂鸣器报警 (PG13 低电平触发)
+        // HAL_GPIO_WritePin(GPIOG, GPIO_PIN_13, GPIO_PIN_RESET);
+    } else if ( temperature >= 28){
+        // 2. 蜂鸣器报警 (PG13 低电平触发)
+        HAL_GPIO_WritePin(GPIOG, GPIO_PIN_13, GPIO_PIN_RESET);
+    } else {
+        // 1. 停止马达
+        Motor_Stop();
+        // 2. 关闭蜂鸣器 (PG13 高电平关闭)
+        HAL_GPIO_WritePin(GPIOG, GPIO_PIN_13, GPIO_PIN_SET);
     }
-    else if(temperature < 28)
-    {
-        Motor_Stop();     // 温度降下来了就停止
-    }
-    
-    osDelay(1000); // 没必要跑太快，1秒检查一次足够
+
+    osDelay(1000); // 1秒轮询一次
   }
   /* USER CODE END StartMotorTask */
 }
-
-/* USER CODE END Application */
-
