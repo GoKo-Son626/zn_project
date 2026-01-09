@@ -32,6 +32,8 @@
 #include "adc.h"
 #include "dht11.h"
 #include "motor.h"
+#include "esp32_cam.h"
+#include "usart.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,6 +50,7 @@ uint16_t adc_raw_data[3] = {0};
 
 uint8_t temperature, humidity;
 
+HAL_StatusTypeDef res_vision;
 
 /* USER CODE END Pv */
 
@@ -76,6 +79,8 @@ osThreadId_t dht11TaskHandle;
 void StartDHT11Task(void *argument);
 osThreadId_t motorTaskHandle;
 void StartMotorTask(void *argument);
+osThreadId_t visionTaskHandle;
+void StartVisionTask(void *argument);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
@@ -133,6 +138,7 @@ void MX_FREERTOS_Init(void) {
   oledTaskHandle = osThreadNew(StartGUITask, NULL, &defaultTask_attributes);
   dht11TaskHandle = osThreadNew(StartDHT11Task, NULL, &defaultTask_attributes);
   motorTaskHandle = osThreadNew(StartMotorTask, NULL, &defaultTask_attributes);
+  visionTaskHandle = osThreadNew(StartVisionTask, NULL, &defaultTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -161,7 +167,7 @@ void StartDefaultTask(void *argument)
     // osDelay(1);
     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
     osDelay(1000);
-    printf("System Alive! Tick: %lu\r\n", HAL_GetTick());
+    // printf("System Alive! Tick: %lu\r\n", HAL_GetTick());
 
   }
   /* USER CODE END StartDefaultTask */
@@ -218,11 +224,11 @@ void StartDHT11Task(void *argument)
     // 读取数据
     if(DHT11_Read_Data(&temperature, &humidity) == 0)
     {
-      printf("DHT11 OK! Humidity: %d%%, Temperature: %d C\r\n", humidity, temperature);
+      // printf("DHT11 OK! Humidity: %d%%, Temperature: %d C\r\n", humidity, temperature);
     }
     else
     {
-      printf("DHT11 Error! Check wiring on PG11\r\n");
+      // printf("DHT11 Error! Check wiring on PG11\r\n");
     }
 
     osDelay(2500); // DHT11 必须 2 秒以上读一次
@@ -232,20 +238,19 @@ void StartDHT11Task(void *argument)
 void StartMotorTask(void *argument)
 {
   /* USER CODE BEGIN StartMotorTask */
-  Motor_Init_All(); // 初始化马达
+  Motor_Init_All(); // 初始化点击驱动模块
   
   for(;;)
   {
-    // 逻辑判定：假设温度阈值为 30 度
-    if(temperature >= 30)
+    // 逻辑判定：假设温度阈值为 27 度
+    if(temperature >= 28)
     {
-        // 1. 马达以 80% 速度正转（作为散热风扇）
+        // 1. 马达以 20% 速度正转（作为散热风扇）
         Motor_Set(20, 1);
-        // // 2. 蜂鸣器报警 (PG13 低电平触发)
-        // HAL_GPIO_WritePin(GPIOG, GPIO_PIN_13, GPIO_PIN_RESET);
-    } else if ( temperature >= 28){
+    } else if ( (temperature >= 26) || (res_vision == HAL_OK) ){
         // 2. 蜂鸣器报警 (PG13 低电平触发)
         HAL_GPIO_WritePin(GPIOG, GPIO_PIN_13, GPIO_PIN_RESET);
+        Motor_Stop();
     } else {
         // 1. 停止马达
         Motor_Stop();
@@ -257,3 +262,68 @@ void StartMotorTask(void *argument)
   }
   /* USER CODE END StartMotorTask */
 }
+
+/**
+  * @brief  视觉监控任务：通过检测 USART3 数据流判定人脸识别状态
+  */
+void StartVisionTask(void *argument)
+{
+  uint8_t dummy_data;
+
+  /* 串口3接收缓冲区，用于简单观察数据 */
+  for(;;)
+  {
+    /* 尝试从 USART3 (接ESP32) 接收 1 个字节 [cite: 313] */
+    /* 商家固件在检测到人脸时会持续输出字符串 [cite: 269, 319] */
+    res_vision = HAL_UART_Receive(&huart3, &dummy_data, 1, 10);
+
+    if (res_vision == HAL_OK) 
+    {
+      // 1. 联动报警逻辑：发现数据流即代表检测到人脸 [cite: 8, 319]
+      // HAL_GPIO_WritePin(GPIOG, GPIO_PIN_13, GPIO_PIN_RESET); 
+
+      // 2. 串口打印输出到 USART1 (笔记本端查看) [cite: 121]
+      // 使用 %c 可以直接看到 ESP32 发过来的字符内容（如 'c', 'e', 'n' 等）
+      printf("[STM32] Detect Face! Byte Received: %c (Val: %d)\r\n", dummy_data, dummy_data);
+      
+      // 延时 500ms 避免打印信息过快刷屏
+      osDelay(500); 
+    }
+    else 
+    {
+      // 未接收到数据，说明当前无识别结果 [cite: 268]
+    }
+
+    // 给系统留出空隙，防止任务过载
+    osDelay(50); 
+  }
+}
+// /**
+//   * @brief  视觉监控任务：简单判断 USART3 是否有数据流
+//   */
+// void StartVisionTask(void *argument)
+// {
+//   uint8_t dummy_data;
+//
+//   for(;;)
+//   {
+//     /* 尝试从 USART3 接收 1 个字节，超时时间设短一点（10ms） */
+//     /* 只要 res 返回 HAL_OK，就代表 ESP32 的串口有输出，即检测到人脸 */
+//     res_vision = HAL_UART_Receive(&huart3, &dummy_data, 1, 10);
+//
+//     if (res_vision == HAL_OK) 
+//     {
+//       // HAL_GPIO_WritePin(GPIOG, GPIO_PIN_13, GPIO_PIN_RESET); // 蜂鸣器响
+//
+//       printf("[STM32] Detect Face! Raw Data............................: %d\r\n", dummy_data);
+//
+//       osDelay(500); 
+//     }
+//     else 
+//     {
+//     }
+//
+//     // 给系统留出空隙，防止任务过载
+//     osDelay(50); 
+//   }
+// }
