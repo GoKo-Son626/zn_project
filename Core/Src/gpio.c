@@ -51,10 +51,16 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOG_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOG, Turbidity_Pin|GPIO_PIN_13|GPIO_PIN_14, GPIO_PIN_SET);
+  // HAL_GPIO_WritePin(GPIOG, Turbidity_Pin|GPIO_PIN_13, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LED_R_GPIO_Port, LED_R_Pin, GPIO_PIN_RESET);
+  // 先把其他引脚（如PG13, 浊度引脚）设为高（如果需要的话）
+  HAL_GPIO_WritePin(GPIOG, Turbidity_Pin|GPIO_PIN_13, GPIO_PIN_SET); 
+  // 把 PG14 (加热棒) 默认设为低电平，防止上电直接加热
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+  // HAL_GPIO_WritePin(GPIOG, GPIO_PIN_14, GPIO_PIN_RESET);
+  // 初始化蜂鸣器 PC6 为高电平（关闭状态），防止上电就响
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6, GPIO_PIN_SET);
 
   /*Configure GPIO pin : Turbidity_Pin */
   GPIO_InitStruct.Pin = Turbidity_Pin;
@@ -76,9 +82,34 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LED_R_GPIO_Port, &GPIO_InitStruct);
+  
+  /*Configure GPIO pin : PC6 (Buzzer) */
+  // --- 新增：PC6 蜂鸣器引脚配置 ---
+  GPIO_InitStruct.Pin = GPIO_PIN_6;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP; // 推挽输出
+  GPIO_InitStruct.Pull = GPIO_NOPULL;         // 既不上拉也不下拉
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+  /* --- 2. 初始化 PC13 (加热棒) --- */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP; // 推挽输出
+  GPIO_InitStruct.Pull = GPIO_NOPULL;         // 建议无上下拉，靠外部电路
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 }
 
-/* USER CODE BEGIN 2 */
+/* USER CODE BEGIN 2 /* USER CODE BEGIN 2 */
+// 打开蜂鸣器 (低电平有效)
+void Buzzer_On(void)
+{
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6, GPIO_PIN_RESET);
+}
+
+// 关闭蜂鸣器 (高电平有效)
+void Buzzer_Off(void)
+{
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6, GPIO_PIN_SET);
+}
 
 /* USER CODE END 2 */
