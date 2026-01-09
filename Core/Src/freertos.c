@@ -30,6 +30,7 @@
 #include "string.h"
 #include "ds18b20.h"
 #include "adc.h"
+#include "heater.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -68,13 +69,20 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
-
+/* --- 新增：Heater 任务属性 (给 2KB 栈空间) --- */
+osThreadId_t heaterTaskHandle;
+const osThreadAttr_t heaterTask_attributes = {
+  .name = "heaterTask",
+  .stack_size = 512 * 4, // 改成 512 Words (2048 Bytes)
+  .priority = (osPriority_t) osPriorityNormal,
+};
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 osThreadId_t oledTaskHandle;
 void StartGUITask(void *argument);
 osThreadId_t sensorTaskHandle;
 void StartSensorTask(void *argument);
+void StartHeaterTask(void *argument);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
@@ -131,6 +139,7 @@ void MX_FREERTOS_Init(void) {
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
   oledTaskHandle = osThreadNew(StartGUITask, NULL, &defaultTask_attributes);
   sensorTaskHandle = osThreadNew(StartSensorTask, NULL, &defaultTask_attributes);
+  heaterTaskHandle = osThreadNew(StartHeaterTask, NULL, &heaterTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -159,7 +168,7 @@ void StartDefaultTask(void *argument)
     // osDelay(1);
     HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_5);
     osDelay(1000);
-    printf("System Alive! Tick: %lu\r\n", HAL_GetTick());
+    // printf("System Alive! Tick: %lu\r\n", HAL_GetTick());
 
   }
   /* USER CODE END StartDefaultTask */
@@ -284,14 +293,96 @@ void StartSensorTask(void *argument)
     else if(shared_level >= 80)  shared_level_pct = 10;
     else                          shared_level_pct = 0;
 
-    // --- D. 串口打印 (调试用) ---
-    // 这样你既可以在屏幕看，也可以在电脑串口助手看
-    printf("Temp:%.2f C, NTU_V:%.2f V, Level:%d\r\n", 
-           shared_temp, shared_ntu_volt, shared_level);
+  // --- D. 串口打印 (调试用) ---
+    
+    // 1. 处理温度的打印格式 (xx.xx)
+    int t_int = (int)shared_temp;
+    int t_dec = (int)((shared_temp - t_int) * 100); // 取2位小数
+    if(t_dec < 0) t_dec = -t_dec; // 绝对值
+
+    // 2. 处理电压的打印格式 (x.xx)
+    int v_int = (int)shared_ntu_volt;
+    int v_dec = (int)((shared_ntu_volt - v_int) * 100); // 取2位小数
+    if(v_dec < 0) v_dec = -v_dec;
+
+    // 3. 使用 %d.%02d 替代 %f
+    // 注意：用 %02d 是为了保证 26.05 不会被打印成 26.5
+    printf("Temp:%d.%02d C, NTU_V:%d.%02d V, Level:%d\r\n", 
+           t_int, t_dec, 
+           v_int, v_dec, 
+           shared_level);
 
     // 每 1 秒采集一次，不要太快
     osDelay(1000);
   }
+}
+//
+// 加热棒控制
+/* USER CODE BEGIN Application */
+void StartHeaterTask(void *argument)
+{
+    // 1. 硬件初始化 (根据你的驱动代码，这里内部已经调用了 Set_State(HEATER_OFF))
+    Heater_Init();
+
+    // 2. 本地状态记录 (用于逻辑判断和防抖)
+    // 初始状态默认为 HEATER_OFF，与 Init 保持一致
+    static uint8_t current_state = HEATER_OFF; 
+
+    printf("Heater Task Started. Range: 26C(ON) -- 30C(OFF)\r\n");
+
+    for(;;)
+    {
+        // 获取当前最新温度
+        float temp = shared_temp;
+
+        // --- 逻辑控制 (滞回比较器逻辑) ---
+
+        // 情况1: 温度低于 26度 -> 必须开启
+        if(temp < 26.0f)
+        {
+	    Buzzer_Off();
+            // 只有当当前状态是“关”的时候才执行“开”的操作，避免重复调用函数
+            if(current_state == HEATER_OFF)
+            {
+                Heater_Set_State(HEATER_ON); // 调用你的驱动接口
+                current_state = HEATER_ON;   // 更新本地状态
+                printf("Action: HEATER ON (Temp: %.2f < 26.0)\r\n", temp);
+            }
+        }
+        // 情况2: 温度高于或等于 30度 -> 必须关闭
+        else if(temp >= 28.0f)
+        {
+	    Buzzer_On();
+            // 只有当当前状态是“开”的时候才执行“关”的操作
+            if(current_state == HEATER_ON)
+            {
+                Heater_Set_State(HEATER_OFF); // 调用你的驱动接口
+                current_state = HEATER_OFF;   // 更新本地状态
+                printf("Action: HEATER OFF (Temp: %.2f >= 30.0)\r\n", temp);
+            }
+        }
+        // 情况3: 26.0 <= temp < 30.0
+        else
+        {
+	    Buzzer_Off();
+            // 死区时间/滞回区间：保持上一时刻的状态不变
+            // 如果是从 25度升上来的，这里继续加热直到30度
+            // 如果是从 31度降下来的，这里继续停止直到26度
+        }
+
+        // --- 状态心跳打印 (调试用，每2秒报一次，防止感觉死机) ---
+        static uint8_t tick = 0;
+        if(++tick >= 2)
+        {
+            printf("[Status] Temp: %.2f, Heater: %s\r\n", 
+                   temp, 
+                   (current_state == HEATER_ON) ? "ON" : "OFF");
+            tick = 0;
+        }
+
+        // 控制周期 1000ms
+    osDelay(1000);
+    }
 }
 /* USER CODE END Application */
 
