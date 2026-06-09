@@ -20,8 +20,13 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f1xx_it.h"
+#include "string.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#define ESP_RX_BUF_SIZE 512
+extern uint8_t esp_rx_buf[ESP_RX_BUF_SIZE];
+extern uint8_t esp_process_buf[ESP_RX_BUF_SIZE];
+extern uint16_t esp_rx_len;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -224,13 +229,23 @@ void USART1_IRQHandler(void)
   */
 void USART3_IRQHandler(void)
 {
-  /* USER CODE BEGIN USART3_IRQn 0 */
-
-  /* USER CODE END USART3_IRQn 0 */
+  if(__HAL_UART_GET_FLAG(&huart3, UART_FLAG_IDLE) != RESET)
+  {
+    __HAL_UART_CLEAR_IDLEFLAG(&huart3);
+    HAL_UART_DMAStop(&huart3);
+    
+    // 计算收到的字节数
+    uint8_t temp_len = ESP_RX_BUF_SIZE - __HAL_DMA_GET_COUNTER(&hdma_usart3_rx);
+    esp_rx_len = temp_len;
+    
+    // 拷贝到处理缓冲区
+    memcpy(esp_process_buf, esp_rx_buf, temp_len);
+    esp_process_buf[temp_len] = '\0';
+    
+    // 重新开启 DMA 接收
+    HAL_UART_Receive_DMA(&huart3, esp_rx_buf, ESP_RX_BUF_SIZE);
+  }
   HAL_UART_IRQHandler(&huart3);
-  /* USER CODE BEGIN USART3_IRQn 1 */
-
-  /* USER CODE END USART3_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

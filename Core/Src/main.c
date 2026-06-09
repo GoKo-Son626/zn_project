@@ -28,7 +28,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+/* 告诉编译器，这个数组在别处定义了，你尽管用 */
+extern uint16_t adc_raw_data[3];
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -102,7 +103,8 @@ int main(void)
   MX_I2C1_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
-
+	/* 开启 ADC DMA 搬运，长度为 3，对应你的三个通道 */
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_raw_data, 3);
   /* USER CODE END 2 */
 
   /* Init scheduler */
